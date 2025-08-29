@@ -9,7 +9,6 @@ variable "vm_subnet_prefix" {
   type    = list(string)
   default = ["10.1.1.0/24"]
 }
-variable "rg_name" {}
 variable "resource_tags" {
   type    = map(string)
   default = {}

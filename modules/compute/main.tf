@@ -1,30 +1,12 @@
-data "azurerm_resources" "existing_vms" {
-  type                = "Microsoft.Compute/virtualMachines"
-  resource_group_name = var.rg_name
-  required_tags       = var.resource_tags
-}
-
-data "azurerm_resources" "existing_nics" {
-  type                = "Microsoft.Network/networkInterfaces"
-  resource_group_name = var.rg_name
-  required_tags       = var.resource_tags
-}
-
 locals {
   vm_prefix  = "vm"
   nic_prefix = "nic"
   app        = "linux"
   env        = var.environment
   loc        = var.location_short
-  existing_vm_names = [for res in data.azurerm_resources.existing_vms.resources : res.name if can(regex("^${local.vm_prefix}-${local.app}-${local.env}-${local.loc}-\\d{3}$", res.name))]
-  vm_counts  = [for name in local.existing_vm_names : tonumber(substr(name, -3, 3))]
-  vm_max     = length(local.vm_counts) > 0 ? max(local.vm_counts...) : 0
-  vm_instance = format("%03d", local.vm_max + 1)
+  vm_instance = "001"
   vm_name    = "${local.vm_prefix}-${local.app}-${local.env}-${local.loc}-${local.vm_instance}"
-  existing_nic_names = [for res in data.azurerm_resources.existing_nics.resources : res.name if can(regex("^${local.nic_prefix}-${local.app}-${local.env}-${local.loc}-\\d{3}$", res.name))]
-  nic_counts = [for name in local.existing_nic_names : tonumber(substr(name, -3, 3))]
-  nic_max    = length(local.nic_counts) > 0 ? max(local.nic_counts...) : 0
-  nic_instance = format("%03d", local.nic_max + 1)
+  nic_instance = "001"
   nic_name   = "${local.nic_prefix}-${local.app}-${local.env}-${local.loc}-${local.nic_instance}"
 }
 
@@ -64,4 +46,26 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = var.image_version
   }
   tags = var.resource_tags
+}
+
+# Optional: Query existing resources for naming
+data "azurerm_resources" "existing_vms" {
+  type                = "Microsoft.Compute/virtualMachines"
+  resource_group_name = var.rg_name
+  required_tags       = var.resource_tags
+}
+
+data "azurerm_resources" "existing_nics" {
+  type                = "Microsoft.Network/networkInterfaces"
+  resource_group_name = var.rg_name
+  required_tags       = var.resource_tags
+}
+
+locals {
+  existing_vm_names = [for res in try(data.azurerm_resources.existing_vms.resources, []) : res.name if can(regex("^${local.vm_prefix}-${local.app}-${local.env}-${local.loc}-\\d{3}$", res.name))]
+  vm_counts  = [for name in local.existing_vm_names : tonumber(substr(name, -3, 3))]
+  vm_max     = length(local.vm_counts) > 0 ? max(local.vm_counts...) : 0
+  existing_nic_names = [for res in try(data.azurerm_resources.existing_nics.resources, []) : res.name if can(regex("^${local.nic_prefix}-${local.app}-${local.env}-${local.loc}-\\d{3}$", res.name))]
+  nic_counts = [for name in local.existing_nic_names : tonumber(substr(name, -3, 3))]
+  nic_max    = length(local.nic_counts) > 0 ? max(local.nic_counts...) : 0
 }

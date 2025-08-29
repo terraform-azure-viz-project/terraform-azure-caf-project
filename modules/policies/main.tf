@@ -1,82 +1,78 @@
-locals {
-  prefix = "pol"
-  init_prefix = "init"
-  app    = "hipaa"
-  env    = var.environment
-  loc    = var.location_short
-  instance_count = "001"
-  full_policy_files = fileset("${path.module}/json_policies/full", "*.json")
-  sandbox_policy_files = fileset("${path.module}/json_policies/sandbox", "*.json")
+variable "management_group_id" {
+  description = "The ID of the management group to apply policies"
+  type        = string
 }
 
-resource "azurerm_policy_definition" "full_custom_policies" {
-  for_each = local.full_policy_files
+# Create custom policy definitions from JSON files
+resource "azurerm_policy_definition" "custom_policies" {
+  for_each = fileset("${path.module}/json_policies/common", "*.json")
 
-  name                = "${local.prefix}-${local.app}-full-${replace(basename(each.value), ".json", "")}-${local.env}-${local.loc}-${local.instance_count}"
-  display_name        = "${local.prefix}-${local.app}-full-${replace(basename(each.value), ".json", "")}-${local.env}-${local.loc}-${local.instance_count}"
-  policy_type         = jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.policyType
-  mode                = jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.mode
-  description         = jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.description
-  metadata            = jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.metadata
-  parameters          = try(jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.parameters, {})
-  policy_rule         = jsondecode(file("${path.module}/json_policies/full/${each.value}")).properties.policyRule
-  management_group_id = var.platform_mg_id
+  name         = "${replace(basename(each.value), ".json", "")}-custom"  # Unique name to avoid conflicts
+  display_name = try(
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).displayName,
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.displayName,
+    "Default Display Name"
+  )
+  policy_type  = "Custom"
+  mode         = try(
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).mode,
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.mode,
+    "All"
+  )
+  description  = try(
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).description,
+    jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.description,
+    null
+  )
+  metadata     = try(
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).metadata),
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.metadata),
+    null
+  )
+  parameters   = try(
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).parameters),
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.parameters),
+    jsonencode({})
+  )
+  policy_rule  = try(
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).policyRule),
+    jsonencode(jsondecode(file("${path.module}/json_policies/common/${each.value}")).properties.policyRule),
+    null
+  )
+
+  management_group_id = var.management_group_id
+
+  lifecycle {
+    ignore_changes = [metadata]  # Ignore if metadata changes post-creation
+  }
 }
 
-resource "azurerm_policy_definition" "sandbox_custom_policies" {
-  for_each = local.sandbox_policy_files
-
-  name                = "${local.prefix}-${local.app}-sandbox-${replace(basename(each.value), ".json", "")}-${local.env}-${local.loc}-${local.instance_count}"
-  display_name        = "${local.prefix}-${local.app}-sandbox-${replace(basename(each.value), ".json", "")}-${local.env}-${local.loc}-${local.instance_count}"
-  policy_type         = jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.policyType
-  mode                = jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.mode
-  description         = jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.description
-  metadata            = jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.metadata
-  parameters          = try(jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.parameters, {})
-  policy_rule         = jsondecode(file("${path.module}/json_policies/sandbox/${each.value}")).properties.policyRule
-  management_group_id = var.sandbox_mg_id
-}
-
-resource "azurerm_policy_set_definition" "hipaa_full_initiative" {
-  name                = "${local.init_prefix}-${local.app}-full-${local.env}-${local.loc}-${local.instance_count}"
+# Create custom initiative (policy set) referencing the custom policies
+resource "azurerm_policy_set_definition" "custom_hipaa_initiative" {
+  name                = "custom-hipaa-initiative"
   policy_type         = "Custom"
-  display_name        = "${local.init_prefix}-${local.app}-full-${local.env}-${local.loc}-${local.instance_count}"
-  management_group_id = var.platform_mg_id
+  display_name        = "Custom HITRUST/HIPAA"
+  description         = "Custom version of HIPAA HITRUST initiative"
+  management_group_id = var.management_group_id
+
+  parameters = jsonencode({})  # Add parameters from hipaa_initiative.json if needed
 
   dynamic "policy_definition_reference" {
-    for_each = azurerm_policy_definition.full_custom_policies
+    for_each = azurerm_policy_definition.custom_policies
     content {
       policy_definition_id = policy_definition_reference.value.id
-      reference_id         = policy_definition_reference.key
+      parameter_values     = jsonencode({})  # Map parameters from hipaa_initiative.json's policyDefinitions if needed
+      reference_id         = policy_definition_reference.key  # Use file name as reference ID
     }
   }
 }
 
-resource "azurerm_policy_set_definition" "hipaa_sandbox_initiative" {
-  name                = "${local.init_prefix}-${local.app}-sandbox-${local.env}-${local.loc}-${local.instance_count}"
-  policy_type         = "Custom"
-  display_name        = "${local.init_prefix}-${local.app}-sandbox-${local.env}-${local.loc}-${local.instance_count}"
-  management_group_id = var.sandbox_mg_id
-
-  dynamic "policy_definition_reference" {
-    for_each = azurerm_policy_definition.sandbox_custom_policies
-    content {
-      policy_definition_id = policy_definition_reference.value.id
-      reference_id         = policy_definition_reference.key
-    }
-  }
-}
-
-resource "azurerm_management_group_policy_assignment" "hipaa_full_initiative" {
-  name                 = "${local.init_prefix}-${local.app}-full-${local.env}-${local.loc}-${local.instance_count}-assignment"
-  management_group_id  = var.platform_mg_id
-  policy_definition_id = azurerm_policy_set_definition.hipaa_full_initiative.id
-  description          = "Assigns the full custom HIPAA initiative to the platform management group"
-}
-
-resource "azurerm_management_group_policy_assignment" "hipaa_sandbox_initiative" {
-  name                 = "${local.init_prefix}-${local.app}-sandbox-${local.env}-${local.loc}-${local.instance_count}-assignment"
-  management_group_id  = var.sandbox_mg_id
-  policy_definition_id = azurerm_policy_set_definition.hipaa_sandbox_initiative.id
-  description          = "Assigns the limited custom HIPAA initiative to the sandbox management group"
+# Assign the custom initiative to the management group
+resource "azurerm_management_group_policy_assignment" "hipaa_assignment" {
+  name                 = "custom-hipaa-assignment"
+  display_name         = "Custom HIPAA Assignment"
+  policy_definition_id = azurerm_policy_set_definition.custom_hipaa_initiative.id
+  management_group_id  = var.management_group_id
+  description          = "Assignment of custom HIPAA initiative"
+  parameters           = jsonencode({})  # Add any initiative parameters here
 }

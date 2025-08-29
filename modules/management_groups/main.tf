@@ -17,7 +17,7 @@ locals {
 resource "azurerm_management_group" "platform" {
   display_name               = "Platform"
   name                       = local.platform_name
-  parent_management_group_id = data.azurerm_management_group.root.group_id
+  parent_management_group_id = data.azurerm_management_group.root.id
 }
 
 resource "azurerm_management_group" "management" {

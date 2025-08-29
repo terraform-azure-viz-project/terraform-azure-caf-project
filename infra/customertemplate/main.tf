@@ -5,7 +5,6 @@ module "networking_spoke" {
   location          = var.location
   address_space     = var.spoke_address_space
   vm_subnet_prefix  = var.spoke_vm_subnet_prefix
-  rg_name           = "rg-spoke-${var.environment}-${var.location_short}-001"
   resource_tags     = var.resource_tags
   additional_subnets = var.additional_subnets
 }
