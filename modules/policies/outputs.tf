@@ -1,2 +1,0 @@
-# modules/policy/outputs.tf
-
