@@ -1,0 +1,34 @@
+{
+  "properties": {
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Requires Transparent Data Encryption (TDE) for Azure SQL Databases to comply with HIPAA data protection requirements.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Regulatory Compliance",
+      "hipaa_control": "164.312(a)(2)(iv)"
+    },
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Sql/servers/databases"
+          },
+          {
+            "field": "name",
+            "notEquals": "master"
+          },
+          {
+            "field": "Microsoft.Sql/servers/databases/transparentDataEncryption.status",
+            "notEquals": "Enabled"
+          }
+        ]
+      },
+      "then": {
+        "effect": "Deny"
+      }
+    }
+  }
+}

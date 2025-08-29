@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Prevents production subscriptions from peering with sandbox subscriptions to ensure isolation.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Regulatory Compliance",
+      "hipaa_control": "164.312(a)(1)"
+    },
+    "parameters": {
+      "sandboxManagementGroupId": {
+        "type": "String",
+        "metadata": {
+          "description": "The ID of the sandbox management group"
+        }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Network/virtualNetworkPeerings"
+          },
+          {
+            "field": "Microsoft.Network/virtualNetworkPeerings/remoteVirtualNetwork.id",
+            "contains": "[parameters('sandboxManagementGroupId')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "Deny"
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+# Stubbed for manual fill
+environment = ""
+location_short = ""
+location = ""
+hub_rg_name = ""
+hub_vnet_name = ""
+hub_vnet_id = ""
+ssh_public_key = ""
+spoke_address_space = ["10.1.0.0/16"]
+spoke_vm_subnet_prefix = ["10.1.1.0/24"]
+deploy_vm = true
+vm_size = "Standard_DS1_v2"
+admin_username = "adminuser"
+os_disk_type = "Premium_LRS"
+image_publisher = "Canonical"
+image_offer = "UbuntuServer"
+image_sku = "18.04-LTS"
+image_version = "latest"
+resource_tags = {}
+additional_subnets = {}

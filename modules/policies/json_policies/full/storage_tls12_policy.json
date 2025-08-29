@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Enforces TLS 1.2 for Azure Storage Accounts to ensure secure data transmission as per HIPAA requirements.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Regulatory Compliance",
+      "hipaa_control": "164.312(e)(2)(ii)"
+    },
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Storage/storageAccounts"
+          },
+          {
+            "field": "Microsoft.Storage/storageAccounts/minimumTlsVersion",
+            "notEquals": "TLS1_2"
+          }
+        ]
+      },
+      "then": {
+        "effect": "Deny"
+      }
+    }
+  }
+}

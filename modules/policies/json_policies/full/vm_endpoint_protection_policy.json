@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Audits virtual machines for installed endpoint protection to ensure HIPAA-compliant security monitoring.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Regulatory Compliance",
+      "hipaa_control": "164.312(b)"
+    },
+    "parameters": {},
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Compute/virtualMachines"
+          },
+          {
+            "field": "Microsoft.Compute/virtualMachines/extensions[type eq 'MicrosoftMonitoringAgent'].settings",
+            "exists": "false"
+          }
+        ]
+      },
+      "then": {
+        "effect": "Audit"
+      }
+    }
+  }
+}
